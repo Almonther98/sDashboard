@@ -89,28 +89,47 @@ export default {
 
   mounted() {
     this.fetchStockData();
+    this.autoRefresh = setInterval(this.fetchStockData, 60000); // Refresh every 60 seconds
+  },
+
+  beforeDestroy() {
+    clearInterval(this.autoRefresh);
   },
 
   methods: {
-    fetchStockData() {
-      // In a real application, you would fetch actual data from a stock API
-      // For this example, we'll generate random values
-      this.stocks.forEach((stock) => {
-        // Generate random price based on a realistic base price
-        const basePrice = this.getBasePrice(stock.symbol);
-        const randomFactor = 0.98 + Math.random() * 0.04; // Random factor between 0.98 and 1.02
+    async fetchStockData() {
+      const apiKey = "ZLH4CQ077J3G5WK8"; // Replace with your Alpha Vantage API key
+      const symbols = this.stocks.map((stock) => stock.symbol);
+      const requests = symbols.map((symbol) =>
+        fetch(
+          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`
+        )
+          .then((response) => response.json())
+          .then((data) => ({
+            symbol,
+            price: parseFloat(data["Global Quote"]["05. price"]),
+            change: parseFloat(data["Global Quote"]["09. change"]),
+            changePercent: parseFloat(
+              data["Global Quote"]["10. change percent"]
+            ),
+          }))
+      );
 
-        const newPrice = basePrice * randomFactor;
-        const oldPrice = stock.price || newPrice * 0.99; // If first load, create small difference
-        const priceChange = newPrice - oldPrice;
-        const percentChange = (priceChange / oldPrice) * 100;
-
-        stock.price = newPrice;
-        stock.change = priceChange;
-        stock.changePercent = percentChange;
-      });
-
-      this.lastUpdated = new Date().toLocaleString();
+      try {
+        const results = await Promise.all(requests);
+        this.stocks = this.stocks.map((stock) => {
+          const updated = results.find((item) => item.symbol === stock.symbol);
+          return {
+            ...stock,
+            price: updated.price,
+            change: updated.change,
+            changePercent: updated.changePercent,
+          };
+        });
+        this.lastUpdated = new Date().toLocaleString();
+      } catch (error) {
+        console.error("Error fetching stock data:", error);
+      }
     },
 
     getBasePrice(symbol) {
