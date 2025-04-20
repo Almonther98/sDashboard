@@ -1,10 +1,9 @@
 <script setup>
-import HelloWorld from "./components/HelloWorld.vue";
-import test from "./components/test.vue";
+import mainDashboard from "./components/mainDashboard.vue";
 </script>
 
 <template>
-  <test />
+  <mainDashboard />
 </template>
 
 <style scoped></style>
